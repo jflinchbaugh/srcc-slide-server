@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <style>
+     div#list div {
+       padding: 1ex;
+     }
+    </style>
+  </head>
+  <body>
+    <h1>Finding Screens</h1>
+    <div id = "list">
+    </div>
+    <div id = "searching">Searching...</div>
+    <script>
+     const baseUrl = "http://192.168.0."
+     function reqListener(ev) {
+
+         const url = ev.srcElement.responseURL;
+         const screenUrl = url.substring(0, url.length - 12);
+         const identifier = ev.srcElement.responseText;
+         const item = document.createElement("div");
+         item.innerHTML = `<a target="_blank"
+                              href="${screenUrl}">
+           ${screenUrl} (${identifier})</a>`
+
+         const list = document.getElementById("list");
+         list.appendChild(item);
+     }
+
+     for (i = 1; i < 256; i++) {
+         const req = new XMLHttpRequest();
+         req.addEventListener("load", reqListener);
+         req.open("GET", baseUrl + i + ":8080/app-identity");
+         req.send();
+      }
+     setTimeout(function() {
+      document.getElementById("searching").remove();
+    }, 5000);
+    </script>
+  </body>
+</html>
