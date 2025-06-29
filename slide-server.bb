@@ -1,4 +1,9 @@
 #!/usr/bin/env bb
+
+;; script to start a web server
+;; to control the srcc slide show
+;; used on in-house displays
+
 (ns slide-server
   (:require
    [hiccup2.core :as html]
@@ -6,11 +11,11 @@
    [taoensso.timbre :as log]
    [org.httpkit.server :as server]))
 
-(def port 8080)
-(def refresh-interval-ms (* 1000 60 60 6)) ;; 6 hours
-(def title "Event Room")
+(def config {:port 8080
+             :refresh-interval-ms (* 1000 60 60 6) ;; 6 hours
+             :title "Event Room" })
 
-(log/info "slide-server on" port)
+(log/info "Starting slide-server on" (:port config))
 
 (def style "
 html {
@@ -68,10 +73,10 @@ a, a:visited, a:active {
            (html/html
              [:html {:lang "en"}
               [:head
-               [:title title]
+               [:title (:title config)]
                [:style style]]
               [:body
-               [:h1 title]
+               [:h1 (:title config)]
                [:div.actions
                 [:a {:href  "/logo"}
                   [:div.action "Logo"]]
@@ -93,7 +98,6 @@ a, a:visited, a:active {
 
 (def refresh-script "
   cd $HOME/Pictures/events
-  pwd
   rm -f *.jpg *.png *.jpeg
   cp ../default/* .
   wget -nd -r -A jpg,png --backups=0 -e robots=off --no-check-certificate \\
@@ -101,11 +105,11 @@ a, a:visited, a:active {
   exit 0
 ")
 
-(defn infinite-loop [interval-ms function]
+(defn infinite-background-loop [interval-ms function]
   (function)
   (future
     (Thread/sleep interval-ms)
-    (infinite-loop interval-ms function))
+    (infinite-background-loop interval-ms function))
   nil)
 
 (defn refresh-events []
@@ -117,7 +121,7 @@ a, a:visited, a:active {
                    "/app-identity" {:status 200
                                     :headers {"Content-type" "text/plain"
                                               "Access-Control-Allow-Origin" "*"}
-                                    :body (str "slide-server " title)}
+                                    :body (str "slide-server " (:title config))}
                    "/logo" (do
                              (log/info "linking logo")
                              (proc/shell
@@ -142,10 +146,12 @@ a, a:visited, a:active {
                    (not-found))]
       response))
 
-(def server-shutdown (server/run-server app {:host "0.0.0.0" :port port}))
+(def server-shutdown (server/run-server app {:host "0.0.0.0" :port (:port config)}))
 
-(infinite-loop refresh-interval-ms refresh-events)
+;; periodically refresh images
+(infinite-background-loop (:refresh-interval-ms config) refresh-events)
 
+;; start and restart eye-of-gnome viewer
 (loop []
   (proc/shell
     "sh"
