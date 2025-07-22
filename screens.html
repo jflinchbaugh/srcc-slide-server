@@ -13,7 +13,7 @@
     </div>
     <div id = "searching">Searching...</div>
     <script>
-     const baseUrl = "http://192.168.0."
+     const baseUrl = "http://192.168.1."
      function reqListener(ev) {
 
          const url = ev.srcElement.responseURL;
@@ -36,7 +36,7 @@
       }
      setTimeout(function() {
       document.getElementById("searching").remove();
-    }, 5000);
+    }, 10000);
     </script>
   </body>
 </html>
