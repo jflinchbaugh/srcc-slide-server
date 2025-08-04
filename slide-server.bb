@@ -13,7 +13,7 @@
 
 (def config {:port 8080
              :refresh-interval-ms (* 1000 60 60 6) ;; 6 hours
-             :title "Event Room" })
+             :title "Event Room"})
 
 (log/info "Starting slide-server on" (:port config))
 
@@ -69,22 +69,23 @@ a, a:visited, a:active {
   {:status 200
    :headers {"Content-type" "text/html"}
    :body (str
-           "<!DOCTYPE html>\n"
-           (html/html
-             [:html {:lang "en"}
-              [:head
-               [:title (:title config)]
-               [:style style]]
-              [:body
-               [:h1 (:title config)]
-               [:div.actions
-                [:a {:href  "/logo"}
-                  [:div.action "Logo"]]
-                [:a {:href  "/events"}
-                 [:div.action "Events"]]
-                [:a {:href  "/refresh"}
-                 [:div.action "Refresh Events"]]
-                ]]]))})
+          "<!DOCTYPE html>\n"
+          (html/html
+           [:html {:lang "en"}
+            [:head
+             [:title (:title config)]
+             [:style style]]
+            [:body
+             [:h1 (:title config)]
+             [:div.actions
+              [:a {:href  "/logo"}
+               [:div.action "Logo"]]
+              [:a {:href  "/gdrive"}
+               [:div.action "Google Drive"]]
+              [:a {:href  "/events"}
+               [:div.action "Events"]]
+              [:a {:href  "/refresh"}
+               [:div.action "Refresh"]]]]]))})
 
 (defn redirect [location]
   {:status 302
@@ -93,8 +94,7 @@ a, a:visited, a:active {
 (defn not-found []
   {:status 404
    :headers {"Content-type" "text/plain"}
-   :body "Not Found"
-   })
+   :body "Not Found"})
 
 (def refresh-script "
   cd $HOME/Pictures/events
@@ -102,8 +102,19 @@ a, a:visited, a:active {
   cp ../default/* .
   wget -nd -r -A jpg,png --backups=0 -e robots=off --no-check-certificate \\
     --no-parent https://www.srccpaart.org/billboard/
+
+  echo 'Syncing Google Drive'
+  cd $HOME/Pictures/gdrive
+  rclone sync --timeout 10s --progress 'srcc-gdrive':'SRCC Documents'/'Live Screen Images' .
+
+  killall eom
+
   exit 0
 ")
+
+(defn refresh-images []
+  (log/info "refreshing images")
+  (proc/shell "sh" "-c" refresh-script))
 
 (defn infinite-background-loop [interval-ms function]
   (function)
@@ -112,44 +123,41 @@ a, a:visited, a:active {
     (infinite-background-loop interval-ms function))
   nil)
 
-(defn refresh-events []
-  (proc/shell "sh" "-c" refresh-script))
+(defn activate-dir
+  [dir]
+  (log/info (str "linking " dir))
+  (proc/shell
+    "sh"
+    "-c"
+    (str
+      "ln -sfn $HOME/Pictures/"
+      dir
+      " $HOME/Pictures/show;"
+      " killall eom"))
+  (redirect "/"))
+
+(defn serve-identity []
+  {:status 200
+   :headers {"Content-type" "text/plain"
+             "Access-Control-Allow-Origin" "*"}
+   :body (str "slide-server " (:title config))})
 
 (defn app [req]
-  (let [response (case (:uri req)
-                   "/" (index)
-                   "/app-identity" {:status 200
-                                    :headers {"Content-type" "text/plain"
-                                              "Access-Control-Allow-Origin" "*"}
-                                    :body (str "slide-server " (:title config))}
-                   "/logo" (do
-                             (log/info "linking logo")
-                             (proc/shell
-                               "sh"
-                               "-c"
-                               "ln -sfn $HOME/Pictures/logo $HOME/Pictures/show
-                                killall eom")
-                             (redirect "/"))
-
-                   "/events" (do
-                               (log/info "linking events")
-                               (proc/shell
-                                 "sh"
-                                 "-c"
-                                 "ln -sfn $HOME/Pictures/events $HOME/Pictures/show
-                                  killall eom")
-                               (redirect "/"))
-                   "/refresh" (do
-                               (log/info "linking events")
-                               (refresh-events)
-                               (redirect "/events"))
-                   (not-found))]
-      response))
+  (case (:uri req)
+    "/" (index)
+    "/app-identity" (serve-identity)
+    "/logo" (activate-dir "logo")
+    "/gdrive" (activate-dir "gdrive")
+    "/events" (activate-dir "events")
+    "/refresh" (do
+                 (refresh-images)
+                 (redirect "/"))
+    (not-found)))
 
 (def server-shutdown (server/run-server app {:host "0.0.0.0" :port (:port config)}))
 
 ;; periodically refresh images
-(infinite-background-loop (:refresh-interval-ms config) refresh-events)
+(infinite-background-loop (:refresh-interval-ms config) refresh-images)
 
 ;; start and restart eye-of-gnome viewer
 (loop []
@@ -157,6 +165,6 @@ a, a:visited, a:active {
     "sh"
     "-c"
     "xset s 0 0; xset s off
-     eom -s $HOME/Pictures/show
-     exit 0")
-  (recur))
+    eom -s $HOME/Pictures/show
+    exit 0")
+  (recur)))
