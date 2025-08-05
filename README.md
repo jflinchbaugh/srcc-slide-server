@@ -15,4 +15,5 @@
   - `events` which will receive `default` images plus images from the website.
   - `gdrive` which will receive images from the Google Drivea.
 - Copy `slide-server.bb` into the home directory.
-- Setup the desktop environment to autostart `bb slide-server.bb` upon login.
+- Setup the desktop environment
+  to autostart `bb slide-server.bb "Event Room"` upon login.
