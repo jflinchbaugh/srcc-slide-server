@@ -13,7 +13,7 @@
   - `logo` containing the logo only.
   - `default` containing the default ad images it'll show with no connection.
   - `events` which will receive `default` images plus images from the website.
-  - `gdrive` which will receive images from the Google Drivea.
+  - `gdrive` which will receive images from the Google Drive.
 - Copy `slide-server.bb` into the home directory.
 - Setup the desktop environment
   to autostart `bb slide-server.bb "Event Room"` upon login.
