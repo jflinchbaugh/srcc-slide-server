@@ -3,7 +3,6 @@
 ;; script to start a web server
 ;; to control the srcc slide show
 ;; used on in-house displays
-
 (ns slide-server
   (:require
    [hiccup2.core :as html]
@@ -11,10 +10,12 @@
    [taoensso.timbre :as log]
    [org.httpkit.server :as server]))
 
-(def config {:port 8080
-             :refresh-interval-ms (* 1000 60 60 6) ;; 6 hours
-             :title "Event Room"})
+(def config
+    {:port 8080
+     :refresh-interval-ms (* 1000 60 60 6) ;; 6 hours
+     :title (or (first *command-line-args*) "SRCC")})
 
+(log/info "CLI " *command-line-args*)
 (log/info "Starting slide-server on" (:port config))
 
 (def style "
