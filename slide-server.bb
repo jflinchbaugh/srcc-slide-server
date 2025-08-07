@@ -106,7 +106,8 @@ a, a:visited, a:active {
 
   echo 'Syncing Google Drive'
   cd $HOME/Pictures/gdrive
-  rclone sync --timeout 10s --progress 'srcc-gdrive':'SRCC Documents'/'Live Screen Images' .
+  rclone sync --timeout 10s --progress \\
+    'srcc-gdrive':'SRCC Documents'/'Live Screen Images' .
 
   killall eom
 
