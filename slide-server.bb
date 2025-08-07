@@ -21,8 +21,8 @@
 (def style "
 html {
   box-sizing: border-box;
-  font-size: 24pt;
   background-color: white;
+  font-size: 24pt;
 }
 
 * {
@@ -47,22 +47,20 @@ ul {
 body {
   -webkit-user-select: none;
   user-select: none;
+}
 
 .action {
   background-color: black;
-  text-color: white;
-  padding: 5ex;
+  color: white;
+  padding: 3ex;
   border-radius: 1ex;
   margin-bottom: 1ex;
+  width: 100%;
+  font-size: 2rem;
 }
 
 .actions {
   padding: 1ex;
-}
-
-a, a:visited, a:active {
-  color: white;
-  text-decoration: none;
 }
 ")
 
@@ -79,14 +77,14 @@ a, a:visited, a:active {
             [:body
              [:h1 (:title config)]
              [:div.actions
-              [:a {:href  "/logo"}
-               [:div.action "Logo"]]
-              [:a {:href  "/gdrive"}
-               [:div.action "Google Drive"]]
-              [:a {:href  "/events"}
-               [:div.action "Events"]]
-              [:a {:href  "/refresh"}
-               [:div.action "Refresh"]]]]]))})
+              [:form {:action "/logo" :method "post"}
+               [:button.action {:type "submit"} "Logo"]]
+              [:form {:action "/gdrive" :method "post"}
+               [:button.action {:type "submit"} "Google Drive"]]
+              [:form {:action "/events" :method "post"}
+               [:button.action {:type "submit"} "Events"]]
+              [:form {:action "/refresh" :method "post"}
+               [:button.action {:type "submit"} "Refresh"]]]]]))})
 
 (defn redirect [location]
   {:status 302
@@ -145,15 +143,19 @@ a, a:visited, a:active {
    :body (str "slide-server " (:title config))})
 
 (defn app [req]
-  (case (:uri req)
-    "/" (index)
-    "/app-identity" (serve-identity)
-    "/logo" (activate-dir "logo")
-    "/gdrive" (activate-dir "gdrive")
-    "/events" (activate-dir "events")
-    "/refresh" (do
-                 (refresh-images)
-                 (redirect "/"))
+  (case (:request-method req)
+    :get (case (:uri req)
+           "/" (index)
+           "/app-identity" (serve-identity)
+           (not-found))
+    :post (case (:uri req)
+            "/logo" (activate-dir "logo")
+            "/gdrive" (activate-dir "gdrive")
+            "/events" (activate-dir "events")
+            "/refresh" (do
+                         (refresh-images)
+                         (redirect "/"))
+            (not-found))
     (not-found)))
 
 (def server-shutdown (server/run-server app {:host "0.0.0.0" :port (:port config)}))
