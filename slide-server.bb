@@ -15,8 +15,6 @@
      :refresh-interval-ms (* 1000 60 60 6) ;; 6 hours
      :title (or (first *command-line-args*) "SRCC")})
 
-(log/info "CLI " *command-line-args*)
-(log/info "Starting slide-server on" (:port config))
 
 (def style "
 html {
@@ -90,6 +88,11 @@ body {
   {:status 302
    :headers {"Location" location}})
 
+(defn add-redirect [location action]
+  (fn []
+    (action)
+    (redirect location)))
+
 (defn not-found []
   {:status 404
    :headers {"Content-type" "text/plain"}
@@ -116,12 +119,40 @@ body {
   (log/info "refreshing images")
   (proc/shell "sh" "-c" refresh-script))
 
-(defn infinite-background-loop [interval-ms function]
+(defn start-infinite-background-loop [interval-ms function]
   (function)
   (future
     (Thread/sleep interval-ms)
-    (infinite-background-loop interval-ms function))
+    (start-infinite-background-loop interval-ms function))
   nil)
+
+(def ^:const a-day (* 1000 60 60 24))
+
+(defn hour->ms [h]
+  (* 1000 60 60 h))
+
+(defn minute->ms [m]
+  (* 1000 60 m))
+
+(defn ms->hour [ms]
+  (/ ms 60 60 1000))
+
+(defn delay-to-time-of-day [from time-of-day]
+  (->
+    from
+    (* -1)
+    (+ time-of-day)
+    (mod (* 1000 60 60 24))))
+
+(defn now [] (System/currentTimeMillis))
+
+(defn start-at
+  [time-of-day-ms function]
+  (let [delay (delay-to-time-of-day (now) time-of-day-ms)]
+    (log/info (str "Starting schedule in " delay "ms."))
+    (future
+      (Thread/sleep delay)
+      (function))))
 
 (defn activate-dir
   [dir]
@@ -133,8 +164,7 @@ body {
       "ln -sfn $HOME/Pictures/"
       dir
       " $HOME/Pictures/show;"
-      " killall eom"))
-  (redirect "/"))
+      " killall eom")))
 
 (defn serve-identity []
   {:status 200
@@ -149,26 +179,35 @@ body {
            "/app-identity" (serve-identity)
            (not-found))
     :post (case (:uri req)
-            "/logo" (activate-dir "logo")
-            "/gdrive" (activate-dir "gdrive")
-            "/events" (activate-dir "events")
-            "/refresh" (do
-                         (refresh-images)
-                         (redirect "/"))
+            "/logo" (add-redirect "/" (activate-dir "logo"))
+            "/gdrive" (add-redirect "/" (activate-dir "gdrive"))
+            "/events" (add-redirect "/" (activate-dir "events"))
+            "/refresh" (add-redirect "/" (refresh-images))
             (not-found))
     (not-found)))
 
-(def server-shutdown (server/run-server app {:host "0.0.0.0" :port (:port config)}))
+(log/info "Starting slide-server on" (:port config))
+
+;; start the web server
+(def server-shutdown
+  (server/run-server app {:host "0.0.0.0" :port (:port config)}))
 
 ;; periodically refresh images
-(infinite-background-loop (:refresh-interval-ms config) refresh-images)
+(start-infinite-background-loop
+  (:refresh-interval-ms config) refresh-images)
+
+;; reset to events overnight
+(start-at
+  (+ (hour->ms 7))
+  (partial start-infinite-background-loop
+    a-day (partial activate-dir "events")))
 
 ;; start and restart eye-of-gnome viewer
 (loop []
   (proc/shell
     "sh"
     "-c"
-    "xset s 0 0; xset s off
-    eom -s $HOME/Pictures/show
-    exit 0")
-  (recur)))
+    " xset s 0 0; xset s off
+      eom -s $HOME/Pictures/show
+      exit 0")
+  (recur))
