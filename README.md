@@ -20,5 +20,6 @@
 - Setup the desktop environment
   to autostart `bb slide-server.bb 'Event Room'` upon login.
 - Once configured, set the Raspberry Pi to use an Overlay FS,
-  so it can always be reliably started into a known state 
+  so it can always be reliably started into a known state
   after a power-outageb.
+- The `screens.html` can search a subnet from the browser for slide servers.
