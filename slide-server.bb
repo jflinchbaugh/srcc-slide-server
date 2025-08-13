@@ -88,10 +88,9 @@ body {
   {:status 302
    :headers {"Location" location}})
 
-(defn add-redirect [location action]
-  (fn []
+(defn with-redirect [location action]
     (action)
-    (redirect location)))
+    (redirect location))
 
 (defn not-found []
   {:status 404
@@ -179,10 +178,10 @@ body {
            "/app-identity" (serve-identity)
            (not-found))
     :post (case (:uri req)
-            "/logo" (add-redirect "/" (activate-dir "logo"))
-            "/gdrive" (add-redirect "/" (activate-dir "gdrive"))
-            "/events" (add-redirect "/" (activate-dir "events"))
-            "/refresh" (add-redirect "/" (refresh-images))
+            "/logo" (with-redirect "/" (partial activate-dir "logo"))
+            "/gdrive" (with-redirect "/" (partial activate-dir "gdrive"))
+            "/events" (with-redirect "/" (partial activate-dir "events"))
+            "/refresh" (with-redirect "/" refresh-images)
             (not-found))
     (not-found)))
 
