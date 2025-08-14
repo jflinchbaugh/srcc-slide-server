@@ -23,3 +23,11 @@
   so it can always be reliably started into a known state
   after a power-outageb.
 - The `screens.html` can search a subnet from the browser for slide servers.
+
+## Cleanup
+
+Any time I reboot the machines into a writable mode (overlay disabled),
+the script will still automatically boot and download images. Those images
+shouldn't be left laying around on the persistent image,
+so run the `cleanup.sh` to remove the stray images and link the events
+as the default show.
